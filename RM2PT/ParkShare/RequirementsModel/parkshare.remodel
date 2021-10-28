@@ -10,27 +10,27 @@ UseCaseModel ParkShare {
 	Actor ParkingSpotOwner
 	{
 		rentToDriver
-	showAssets
-	register
+		showAssets
+		register
 	}
 
 	Actor ParkingAreaOwner {
 		rentToDriver
-	showAssets
-	register
+		showAssets
+		register
 	}
 
 	Actor Driver {
 		rentFromOwner
 		searchParkingSpot
-	register
+		register
 	}
 
 	Interaction RentToDriverSSD {
 
 		[Participants: ParkingSpotOwner ParkingAreaOwner RentToDriverService]
 
-	CallMessage::RentToDriverSSDCallMessage1(uploadSpotInfo RentToDriverSSDCallMessage1SendingEnd -> RentToDriverSSDExecution1StartEnd)
+		CallMessage::RentToDriverSSDCallMessage1(uploadSpotInfo RentToDriverSSDCallMessage1SendingEnd -> RentToDriverSSDExecution1StartEnd)
 		ReturnMessage::RentToDriverSSDCallMessage1Return(RentToDriverSSDExecution1FinishEnd -> RentToDriverSSDCallMessage1ReturnReceivingEnd RentToDriverSSDCallMessage1)
 		CallMessage::RentToDriverSSDCallMessage3(uploadCertificate RentToDriverSSDCallMessage3SendingEnd -> RentToDriverSSDExecution2StartEnd)
 		ReturnMessage::RentToDriverSSDCallMessage3Return(RentToDriverSSDExecution2FinishEnd -> RentToDriverSSDCallMessage3ReturnReceivingEnd RentToDriverSSDCallMessage3)
@@ -76,15 +76,22 @@ UseCaseModel ParkShare {
 
 		[Participants: Driver SearchParkingSpotService]
 
-		CallMessage::SearchParkingSpotSSDCallMessage1(inputSearchCondition SearchParkingSpotSSDCallMessage1SendingEnd -> SearchParkingSpotSSDExecution1StartEnd)
+		CallMessage::SearchParkingSpotSSDCallMessage1(inputSearchKeywords SearchParkingSpotSSDCallMessage1SendingEnd -> SearchParkingSpotSSDExecution1StartEnd)
 		ReturnMessage::returnSearchResults(SearchParkingSpotSSDExecution1FinishEnd -> SearchParkingSpotSSDCallMessage1ReturnReceivingEnd SearchParkingSpotSSDCallMessage1)
+		CallMessage::SearchParkingSpotSSDCallMessage3(checkSpotDetails SearchParkingSpotSSDCallMessage3SendingEnd -> SearchParkingSpotSSDExecution2StartEnd)
+		ReturnMessage::SearchParkingSpotSSDCallMessage3Return(SearchParkingSpotSSDExecution2FinishEnd -> SearchParkingSpotSSDCallMessage3ReturnReceivingEnd SearchParkingSpotSSDCallMessage3)
 
 		Execution::SearchParkingSpotSSDExecution1(SearchParkingSpotService SearchParkingSpotSSDExecution1StartEnd SearchParkingSpotSSDExecution1FinishEnd)
+		Execution::SearchParkingSpotSSDExecution2(SearchParkingSpotService SearchParkingSpotSSDExecution2StartEnd SearchParkingSpotSSDExecution2FinishEnd)
 
 		MessageEnd::SearchParkingSpotSSDCallMessage1SendingEnd(Driver SearchParkingSpotSSDCallMessage1)
 		ExecutionEnd::SearchParkingSpotSSDExecution1StartEnd(SearchParkingSpotService SearchParkingSpotSSDExecution1)
 		ExecutionEnd::SearchParkingSpotSSDExecution1FinishEnd(SearchParkingSpotService SearchParkingSpotSSDExecution1)
 		MessageEnd::SearchParkingSpotSSDCallMessage1ReturnReceivingEnd(Driver returnSearchResults)
+		MessageEnd::SearchParkingSpotSSDCallMessage3SendingEnd(Driver SearchParkingSpotSSDCallMessage3)
+		ExecutionEnd::SearchParkingSpotSSDExecution2StartEnd(SearchParkingSpotService SearchParkingSpotSSDExecution2)
+		ExecutionEnd::SearchParkingSpotSSDExecution2FinishEnd(SearchParkingSpotService SearchParkingSpotSSDExecution2)
+		MessageEnd::SearchParkingSpotSSDCallMessage3ReturnReceivingEnd(Driver SearchParkingSpotSSDCallMessage3Return)
 
 	}
 
@@ -119,9 +126,9 @@ UseCaseModel ParkShare {
 
 	}
 
-Service RentToDriverService {
+	Service RentToDriverService {
 
-	[Operation]
+		[Operation]
 		uploadSpotInfo()
 		registerSpot()
 		uploadCertificate()
@@ -139,7 +146,8 @@ Service RentToDriverService {
 	Service SearchParkingSpotService {
 
 		[Operation]
-		inputSearchCondition()
+		inputSearchKeywords(keywords,driverID)
+		checkSpotDetails(portID)
 
 	}
 
@@ -151,11 +159,60 @@ Service RentToDriverService {
 
 	}
 
+	// by Duan yuning
+	Contract SearchParkingSpotService::inputSearchKeywords(keywords :String, driverID:String) : String {
+
+		/* definition skeleton */
+		definition:
+			ps:ParkingSpot = ParkingSpot.allInstance()->any(c:ParkingSpot | c.Labels = keywords)
+
+		/* precondition: skeleton */
+		precondition:
+			ps.IsRented = false
+
+		/* postcondition: skeleton */
+		postcondition:
+			if
+				(self.RentStatus = false)
+			then
+				result = ps.BriefIntro
+			else
+				// �Ѿ�rent�˵���������Ѿ�����
+				self.RentNotice = true and
+				result = null
+			endif
+	}
+
+	Contract SearchParkingSpotService::checkSpotDetails(portID :String) : String {
+
+		/* definition skeleton */
+		definition:
+			ps:ParkingSpot = ParkingSpot.allInstance()->any(c:ParkingSpot | c.ID = portID)
+
+		/* precondition: skeleton */
+		precondition:
+			ps.IsRented = false
+
+		/* postcondition: skeleton */
+		postcondition:
+			if
+				(self.RentStatus = false and
+					ps.IsRented = false
+				)
+			then
+				result = ps.Details
+			else
+				// �Ѿ�rent�˵���������Ѿ�����
+				self.RentNotice = true and
+				result = null
+			endif
+	}
+
 }
 
 DomainModel ParkShare {
 
-Entity ParkingSpotOwner extends User {
+	Entity ParkingSpotOwner extends User {
 		[Refer]
 		ParkingSpotOwnertoParkingSpot : ParkingSpot* ! Association
 	}
@@ -220,6 +277,28 @@ Entity ParkingSpotOwner extends User {
 		[Refer]
 		FineRecordtoDriver : Driver ! Association
 		FineRecordtoRentRecord : RentRecord Association
+	}
+
+	Entity ParkingSpot {
+		Labels : String
+		ID : String
+		BriefIntro : String
+		IsRented : Boolean
+		Details : String
+
+		[Refer]
+		ParkingSpottodriver : Driver Composition
+	}
+
+	Entity Driver {
+		RentNotice : String
+		RentStatus : String
+
+		[Refer]
+		DrivertoparkingSpot : ParkingSpot ! Association
+	}
+
+	Entity Owner {
 	}
 
 }
