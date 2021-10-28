@@ -279,17 +279,6 @@ DomainModel ParkShare {
 		FineRecordtoRentRecord : RentRecord Association
 	}
 
-	Entity ParkingSpot {
-		Labels : String
-		ID : String
-		BriefIntro : String
-		IsRented : Boolean
-		Details : String
-
-		[Refer]
-		ParkingSpottodriver : Driver Composition
-	}
-
 	Entity Driver {
 		RentNotice : String
 		RentStatus : String
