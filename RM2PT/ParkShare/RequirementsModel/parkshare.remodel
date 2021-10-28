@@ -1,24 +1,29 @@
 UseCaseModel ParkShare {
 
-	UC::rentToDriver definedBySSD(RentToDriverSSD) relatedService(RentToDriverService)
-	UC::rentFromOwner definedBySSD(RentFromOwnerSSD) relatedService(RentFromOwnerService)
-	UC::searchParkingSpot definedBySSD(SearchParkingSpotSSD) relatedService(SearchParkingSpotService)
-	UC::showAssets definedBySSD(ShowAssetsSSD) relatedService(ShowAssetsService)
+	UC::rentToDriver include login definedBySSD(RentToDriverSSD) relatedService(RentToDriverService)
+	UC::rentFromOwner include login definedBySSD(RentFromOwnerSSD) relatedService(RentFromOwnerService)
+	UC::searchParkingSpot include login definedBySSD(SearchParkingSpotSSD) relatedService(SearchParkingSpotService)
+	UC::showAssets include login definedBySSD(ShowAssetsSSD) relatedService(ShowAssetsService)
+	UC::register
+	UC::login
 
 	Actor ParkingSpotOwner
 	{
 		rentToDriver
 	showAssets
+	register
 	}
 
 	Actor ParkingAreaOwner {
 		rentToDriver
 	showAssets
+	register
 	}
 
 	Actor Driver {
 		rentFromOwner
 		searchParkingSpot
+	register
 	}
 
 	Interaction RentToDriverSSD {
@@ -149,6 +154,73 @@ Service RentToDriverService {
 }
 
 DomainModel ParkShare {
+
+Entity ParkingSpotOwner extends User {
+		[Refer]
+		ParkingSpotOwnertoParkingSpot : ParkingSpot* ! Association
+	}
+
+	Entity ParkingAreaOwner extends User {
+		[Refer]
+		ParkingAreaOwnertoParkingSpot : ParkingSpot* Association
+	}
+
+	Entity Driver extends User {
+		[Refer]
+		DrivertoRentRecord : RentRecord* Association
+		DrivertoFineRecord : FineRecord* Association
+	}
+
+	Entity ParkingSpot {
+		owner : String
+		registerDate : Date
+		status : ParkingSpotStatus[EMPTY|USING|OVERTIME]
+		price : Real
+		serviceStartTime : Date
+		serviceEndTime : Date
+		income : Real
+		address : String
+		longitude : String
+		latitude : String
+
+		[Refer]
+		ParkingSpottoParkingSpotOwner : ParkingSpotOwner Association
+		ParkingSpottoParkingAreaOwner : ParkingAreaOwner ! Association
+		ParkingSpottoRentRecord : RentRecord* Association
+	}
+
+	@AutoCRUD Entity User {
+		id : String
+		username : String
+		password : String
+		telephone : String
+	}
+
+	Entity RentRecord {
+		driver : String
+		parkingSpot : String
+		bookStartTime : Date
+		bookEndTime : Date
+		rentStartTime : Date
+		rentEndTime : Date
+		cost : Real
+		id : String
+
+		[Refer]
+		RentRecordtoDriver : Driver ! Association
+		RentRecordtoParkingSpot : ParkingSpot ! Association
+	}
+
+	Entity FineRecord {
+		driver : String
+		rentRecord : String
+		money : Real
+		fineDate : Date
+
+		[Refer]
+		FineRecordtoDriver : Driver ! Association
+		FineRecordtoRentRecord : RentRecord Association
+	}
 
 }
 
